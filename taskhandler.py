@@ -26,25 +26,20 @@ class TaskHandler(commands.Cog):
     ):
         # Build Crab.fit Information
         localTz = timezone(localTz)
-        initDate = datetime.datetime.today().astimezone(localTz).replace(
+        initDate = datetime.datetime.today().astimezone(datetime.timezone.utc).replace(
             hour=minimumHour, minute=0, second=0, microsecond=0
         ) + datetime.timedelta(days=1)
         timeIterative = initDate
         times = []
-        for i in range(
-            (maximumHour - minimumHour + 1) * 7
-        ):  # For each hour in the week
-            if timeIterative.hour >= minimumHour and timeIterative.hour < maximumHour:
+        for i in range(7):  # For each hour in the week
+            timeIterative = initDate + datetime.timedelta(days=i)
+            for i in range(maximumHour - minimumHour):
                 times.append(
                     timeIterative.astimezone(datetime.timezone.utc).strftime(
                         "%H00-%d%m%Y"
                     )
                 )
                 timeIterative += datetime.timedelta(hours=1)
-            else:
-                timeIterative += datetime.timedelta(
-                    hours=(24 - maximumHour) + minimumHour
-                )
 
         # API Call for Crab.fit
         payload = json.dumps(
@@ -55,6 +50,9 @@ class TaskHandler(commands.Cog):
                     "timezone": str(localTz),
                 }
             }
+        )
+        logging.debug(
+            "Sending Crab.fit API request with the following data: " + str(payload)
         )
         response = requests.request(
             "POST",
@@ -183,14 +181,14 @@ class TaskHandler(commands.Cog):
         startOfWeek: app_commands.Choice[int] = 0,
     ):
         # Check if guild has too many tasks
-        # if self.dbConnector.isAtTaskLimit(interaction.guild_id):
-        #     embed = discord.Embed(
-        #         title="Limit reached!",
-        #         description="This server already has too many schedules :c",
-        #         color=0xFF4444,
-        #     )
-        #     await interaction.response.send_message(embed=embed, ephemeral=True)
-        #     return
+        if self.dbConnector.isAtTaskLimit(interaction.guild_id):
+            embed = discord.Embed(
+                title="Limit reached!",
+                description="This server already has too many schedules :c",
+                color=0xFF4444,
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
 
         # Input Validation
         channelId: int = 0
