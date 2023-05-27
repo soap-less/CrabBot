@@ -1,6 +1,7 @@
 import discord, asyncio, dotenv, logging, os
 from discord.ext import commands
 from cogs.taskhandler import TaskHandler
+from cogs.schedulecommands import ScheduleCommands
 
 dotenv.load_dotenv()
 
@@ -30,6 +31,7 @@ async def main():
     )
     logging.basicConfig()
     await bot.add_cog(TaskHandler(bot))
+    await bot.add_cog(ScheduleCommands(bot))
     await bot.start(token=os.getenv("BOT_TOKEN"))
 
 
