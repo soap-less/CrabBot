@@ -9,7 +9,6 @@ class ScheduleCommands(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.dbConnector = DBConnector()
-        self.executeScheduledTasks.start()
 
     async def cog_load(self):
         print("Scheduling commands loaded.")

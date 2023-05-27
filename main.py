@@ -5,9 +5,7 @@ from cogs.schedulecommands import ScheduleCommands
 
 dotenv.load_dotenv()
 
-intents = discord.Intents.all()
-intents.presences = False
-intents.members = False
+intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="c!", intents=intents, status=discord.Status.idle)
 
 
