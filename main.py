@@ -1,6 +1,6 @@
 import discord, asyncio, dotenv, logging, os
 from discord.ext import commands
-from taskhandler import TaskHandler
+from cogs.taskhandler import TaskHandler
 
 dotenv.load_dotenv()
 
