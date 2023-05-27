@@ -12,7 +12,7 @@ bot = commands.Bot(command_prefix="c!", intents=intents, status=discord.Status.i
 
 @bot.event
 async def on_ready():
-    await bot.tree.sync()  # Only run when changing or adding a slash command
+    # await bot.tree.sync()  # Only run when changing or adding a slash command
     await bot.change_presence(
         activity=discord.Activity(
             type=discord.ActivityType.playing,
