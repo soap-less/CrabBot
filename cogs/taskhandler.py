@@ -1,7 +1,6 @@
 import discord, requests, json, datetime, pytz, countrywrangler, logging, asyncio, calendar
 from discord.interactions import Interaction
 from discord.ext import tasks, commands
-from discord import app_commands
 from pytz import timezone
 from lib.dbconnector import DBConnector
 
@@ -26,7 +25,7 @@ class TaskHandler(commands.Cog):
     ):
         # Build Crab.fit Information
         localTz = timezone(localTz)
-        initDate = datetime.datetime.today().astimezone(datetime.timezone.utc).replace(
+        initDate = datetime.datetime.today().astimezone(localTz).replace(
             hour=minimumHour, minute=0, second=0, microsecond=0
         ) + datetime.timedelta(days=1)
         timeIterative = initDate
@@ -105,8 +104,11 @@ class TaskHandler(commands.Cog):
                     text="Enter your availability at the link above!",
                     icon_url="https://crab.fit/logo192.png",
                 )
+                rolePing = ""
+                if task[3]:
+                    rolePing = f"<@&{task[3]}>"
                 await self.bot.get_channel(task[2]).send(
-                    content=f"<@&{task[3]}>",
+                    content=rolePing,
                     embed=embed,
                 )
 
