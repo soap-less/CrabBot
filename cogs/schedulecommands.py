@@ -77,6 +77,9 @@ class ScheduleCommands(commands.Cog):
         if roleToPing:
             roleId = roleToPing.id
 
+        if type(startOfWeek) == app_commands.Choice:
+            startOfWeek = startOfWeek.value
+
         if not title:  # Set default title if not given
             title = interaction.guild.name
 
@@ -155,13 +158,15 @@ class ScheduleCommands(commands.Cog):
                             embed = discord.Embed(
                                 color=0x44FF44,
                                 title="New schedule created!",
-                                description=f'A crab.fit titled "{title}" will be now posted weekly!!',
+                                description=f'A crab.fit titled "{title}" will be now posted every week!!',
                             ).set_footer(
                                 text="Task #" + str(rowId),
                                 icon_url="https://crab.fit/logo192.png",
                             )
 
-                            await interaction.response.send_message(content=embed)
+                            await interaction.response.send_message(
+                                embed=embed, ephemeral=True
+                            )
 
                 # Initialize Button
                 def __init__(self, dbConnector):
@@ -301,7 +306,7 @@ class ScheduleCommands(commands.Cog):
                                         embed = discord.Embed(
                                             color=0x44FF44,
                                             title="New schedule created!",
-                                            description=f'A crab.fit titled "{title}" will be now posted every {calendar.day_name[(startOfWeek - 1)%7]}!',
+                                            description=f'A crab.fit titled "{title}" will be now posted every week!!',
                                         ).set_footer(
                                             text="Task #" + str(rowId),
                                             icon_url="https://crab.fit/logo192.png",
