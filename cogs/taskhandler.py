@@ -43,11 +43,9 @@ class TaskHandler(commands.Cog):
         # API Call for Crab.fit
         payload = json.dumps(
             {
-                "event": {
-                    "name": f"{title} {initDate.strftime('%m/%d')}-{(initDate + datetime.timedelta(weeks=1)).strftime('%m/%d')}",
-                    "times": times,
-                    "timezone": str(localTz),
-                }
+                "name": f"{title} {initDate.strftime('%m/%d')}-{(initDate + datetime.timedelta(weeks=1)).strftime('%m/%d')}",
+                "times": times,
+                "timezone": str(localTz),
             }
         )
         logging.debug(
