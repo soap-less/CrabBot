@@ -26,6 +26,13 @@ class DBConnector:
         cursor.close()
         return tasks
 
+    def getTasksByGuildId(self, guildId: int):
+        cursor = self.connection.cursor()
+        cursor.execute("SELECT * FROM tasks WHERE guild_id = " + str(guildId) + ";")
+        tasks = cursor.fetchall()
+        cursor.close()
+        return tasks
+
     def addTask(
         self,
         guildId: int,
