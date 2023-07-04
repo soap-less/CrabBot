@@ -22,7 +22,7 @@ class TaskHandler(commands.Cog):
         minimumHour: int = 9,
         maximumHour: int = 22,
         localTz: str = "America/Los_Angeles",
-        initDate: datetime = datetime.datetime.today() + datetime.timedelta(days=1),
+        initDate: datetime = (datetime.datetime.today() + datetime.timedelta(days=1)),
     ) -> requests.Response:
         # Build Crab.fit Information
         localTz = timezone(localTz)
