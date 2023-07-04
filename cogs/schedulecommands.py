@@ -1,8 +1,45 @@
+from typing import Any, Awaitable, Callable
+from cogs.taskhandler import TaskHandler
 import discord, datetime, pytz, countrywrangler, logging, calendar
 from discord.interactions import Interaction
 from discord.ext import commands
 from discord import app_commands
 from lib.dbconnector import DBConnector
+from pytz import timezone
+
+
+class ScheduleDropdown(discord.ui.Select):
+    def __init__(
+        self,
+        tasks: tuple,
+        callback: Callable[[discord.ui.Select, Interaction], Awaitable[None]],
+    ):
+        options = [
+            discord.SelectOption(
+                label=tasks[taskIndex][4],
+                value=taskIndex,
+                description=f"Posts every {calendar.day_name[tasks[taskIndex][8]]}.",
+            )
+            for taskIndex in range(len(tasks))
+        ]
+
+        logging.debug("Creating schedule dropdown with options: " + str(options))
+        self.cbFunction = callback
+
+        super().__init__(options=options, placeholder="Choose a schedule...")
+
+    async def callback(self, interaction: Interaction):
+        await self.cbFunction(self, interaction)
+
+
+class ScheduleSelectView(discord.ui.View):
+    def __init__(
+        self,
+        tasks: tuple,
+        dropdownCallback: Callable[[discord.ui.Select, Interaction], Awaitable[None]],
+    ):
+        super().__init__()
+        self.add_item(ScheduleDropdown(tasks, dropdownCallback))
 
 
 class ScheduleCommands(commands.Cog):
@@ -347,6 +384,123 @@ class ScheduleCommands(commands.Cog):
 
     @newSchedule.error
     async def newScheduleError(
+        self,
+        interaction: discord.Interaction,
+        error: discord.app_commands.AppCommandError,
+    ):
+        if isinstance(error, discord.app_commands.errors.MissingPermissions):
+            embed = discord.Embed(
+                title="You can't do that!",
+                description="Only a server admin can run this command.",
+                color=0xFF4444,
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+        else:
+            errorStr = (
+                "```"
+                + (str(error)[:1015] + "..." if len(str(error)) >= 1018 else str(error))
+                + "```"
+            )
+            embed = discord.Embed(
+                title="Sorry, something went wrong!",
+                description="An error occurred.",
+                color=0xFF4444,
+            ).add_field(name=f"Error ({error.__class__})", value=errorStr)
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            raise error
+
+    @app_commands.command(
+        name="this-week",
+        description="Creates the crab.fit for this week.",
+    )
+    @app_commands.checks.has_permissions(administrator=True)
+    async def thisWeek(self, interaction: Interaction):
+        if not interaction.guild_id:
+            interaction.response.send_message(
+                ephemeral=True,
+                embed=discord.Embed(
+                    color=0xFF4444,
+                    title="Invalid guild.",
+                    description="This command must be run in a server and not in Direct Messages.",
+                ),
+            )
+            return
+
+        guildTasks = self.dbConnector.getTasksByGuildId(interaction.guild_id)
+        if len(guildTasks) < 1:
+            interaction.response.send_message(
+                ephemeral=True,
+                embed=discord.Embed(
+                    color=0xFF4444,
+                    title="No crab.fits scheduled.",
+                    description="Make sure you've already created a weekly posting schedule before running this command. Run `/new-schedule` to create a new weekly posting schedule.",
+                ),
+            )
+            return
+
+        async def selectCallback(dropdown: discord.ui.Select, interaction: Interaction):
+            task = guildTasks[int(dropdown.values[0])]
+            logging.debug("Creating on-demand crab.fit for Task #" + str(task[0]))
+
+            today = datetime.datetime.today().astimezone(timezone(task[7]))
+            initDate = today - datetime.timedelta(days=(7 - task[8]) % 7)
+            logging.debug(
+                f"[Task #{task[0]}] Initial date for on-demand creation: {initDate}"
+            )
+
+            res = await TaskHandler.createCrabFit(
+                title=task[4],
+                minimumHour=task[5],
+                maximumHour=task[6],
+                localTz=task[7],
+                initDate=initDate,
+            )
+            if res.ok:
+                logging.info(
+                    "Successfully created Crab.fit for Task #"
+                    + str(task[0])
+                    + " with response "
+                    + str(res)
+                )
+                embed = discord.Embed(
+                    title=f"Schedule: {initDate.strftime('%m/%d')} - {(initDate + datetime.timedelta(weeks=1)).strftime('%m/%d')}",
+                    url=f"https://crab.fit/{res.json()['id']}",
+                    color=0x00FFFF,
+                )
+                embed.set_footer(
+                    text="Enter your availability at the link above!",
+                    icon_url="https://crab.fit/logo192.png",
+                )
+                rolePing = ""
+                if task[3]:
+                    rolePing = f"<@&{task[3]}>"
+                await self.bot.get_channel(task[2]).send(
+                    content=rolePing,
+                    embed=embed,
+                )
+
+                await interaction.response.send_message(
+                    ephemeral=True,
+                    embed=discord.Embed(
+                        color=0x44FF44,
+                        title="Crab.fit created!",
+                        description="Check the channel it usually posts to to see it.",
+                    ),
+                )
+            else:
+                logging.error(
+                    f"On-demand crab.fit (#{str(task[0])}) failed! Response: ", res.text
+                )
+
+        embed = discord.Embed(
+            title="Which weekly schedule should I make a crab.fit for?", color=0xFFFF00
+        )
+        view = ScheduleSelectView(guildTasks, selectCallback)
+
+        await interaction.response.send_message(ephemeral=True, embed=embed, view=view)
+
+    @thisWeek.error
+    async def thisWeekError(
         self,
         interaction: discord.Interaction,
         error: discord.app_commands.AppCommandError,

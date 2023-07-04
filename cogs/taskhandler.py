@@ -16,18 +16,19 @@ class TaskHandler(commands.Cog):
         logging.info("Schedule/Task Handler loaded.")
 
     # Creates the Crab.Fit and Returns the API Response
+    @staticmethod
     async def createCrabFit(
-        self,
         title: str = "",
         minimumHour: int = 9,
         maximumHour: int = 22,
         localTz: str = "America/Los_Angeles",
-    ):
+        initDate: datetime = datetime.datetime.today() + datetime.timedelta(days=1),
+    ) -> requests.Response:
         # Build Crab.fit Information
         localTz = timezone(localTz)
-        initDate = datetime.datetime.today().astimezone(localTz).replace(
+        initDate = initDate.astimezone(localTz).replace(
             hour=minimumHour, minute=0, second=0, microsecond=0
-        ) + datetime.timedelta(days=1)
+        )
         timeIterative = initDate
         times = []
         for i in range(7):  # For each hour in the week
