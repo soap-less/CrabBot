@@ -18,7 +18,7 @@ class ScheduleDropdown(discord.ui.Select):
             discord.SelectOption(
                 label=tasks[taskIndex][4],
                 value=taskIndex,
-                description=f"Posts every {calendar.day_name[tasks[taskIndex][8]]}.",
+                description=f"Start of week: {calendar.day_name[tasks[taskIndex][8]]}.",
             )
             for taskIndex in range(len(tasks))
         ]
