@@ -443,7 +443,9 @@ class ScheduleCommands(commands.Cog):
             logging.debug("Creating on-demand crab.fit for Task #" + str(task[0]))
 
             today = datetime.datetime.today().astimezone(timezone(task[7]))
-            initDate = today - datetime.timedelta(days=(7 - task[8]) % 7)
+            initDate = today - datetime.timedelta(
+                days=((today.weekday()) - task[8]) % 7
+            )
             logging.debug(
                 f"[Task #{task[0]}] Initial date for on-demand creation: {initDate}"
             )
