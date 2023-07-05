@@ -416,7 +416,7 @@ class ScheduleCommands(commands.Cog):
     @app_commands.checks.has_permissions(administrator=True)
     async def thisWeek(self, interaction: Interaction):
         if not interaction.guild_id:
-            interaction.response.send_message(
+            await interaction.response.send_message(
                 ephemeral=True,
                 embed=discord.Embed(
                     color=0xFF4444,
@@ -428,7 +428,7 @@ class ScheduleCommands(commands.Cog):
 
         guildTasks = self.dbConnector.getTasksByGuildId(interaction.guild_id)
         if len(guildTasks) < 1:
-            interaction.response.send_message(
+            await interaction.response.send_message(
                 ephemeral=True,
                 embed=discord.Embed(
                     color=0xFF4444,
