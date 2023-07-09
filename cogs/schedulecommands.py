@@ -465,7 +465,7 @@ class ScheduleCommands(commands.Cog):
                     + str(res)
                 )
                 embed = discord.Embed(
-                    title=f"Schedule: {initDate.strftime('%m/%d')} - {(initDate + datetime.timedelta(weeks=1)).strftime('%m/%d')}",
+                    title=f"Schedule: {initDate.strftime('%m/%d')} - {(initDate + datetime.timedelta(days=6)).strftime('%m/%d')}",
                     url=f"https://crab.fit/{res.json()['id']}",
                     color=0x00FFFF,
                 )
