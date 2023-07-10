@@ -24,11 +24,20 @@ class TaskHandler(commands.Cog):
         localTz: str = "America/Los_Angeles",
         initDate: datetime = (datetime.datetime.today() + datetime.timedelta(days=1)),
     ) -> requests.Response:
+        logging.debug("Beginning Crab.fit request build with title: '" + title + "'")
+        logging.debug("Datetime.today() = " + str(datetime.datetime.today()))
+        logging.debug(
+            "today() + 1 = "
+            + str(datetime.datetime.today() + datetime.timedelta(days=1))
+        )
+        logging.debug("Initial date parameter: " + str(initDate))
+
         # Build Crab.fit Information
         localTz = timezone(localTz)
         initDate = initDate.astimezone(localTz).replace(
             hour=minimumHour, minute=0, second=0, microsecond=0
         )
+        logging.debug("Beginning iteration with date: " + str(initDate))
         timeIterative = initDate
         times = []
         for i in range(7):  # For each hour in the week
