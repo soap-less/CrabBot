@@ -107,4 +107,4 @@ class TaskHandler(commands.Cog):
     async def beforeTaskExecuter(self):
         await self.bot.wait_until_ready()
         secondsUntilSharpHour = (60 - datetime.datetime.now().minute) * 60
-        # await asyncio.sleep(secondsUntilSharpHour)
+        await asyncio.sleep(secondsUntilSharpHour)
