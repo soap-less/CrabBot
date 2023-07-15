@@ -1,24 +1,23 @@
-from typing import Any, Awaitable, Callable
-from cogs.taskhandler import TaskHandler
-import discord, datetime, pytz, countrywrangler, logging, calendar
+import discord, datetime, pytz, countrywrangler, logging, calendar, lib.utils
+from typing import Awaitable, Callable
 from discord.interactions import Interaction
 from discord.ext import commands
 from discord import app_commands
-from lib.dbconnector import DBConnector
+from lib.dbconnector import DBConnector, Task
 from pytz import timezone
 
 
 class ScheduleDropdown(discord.ui.Select):
     def __init__(
         self,
-        tasks: tuple,
+        tasks: list[Task],
         callback: Callable[[discord.ui.Select, Interaction], Awaitable[None]],
     ):
         options = [
             discord.SelectOption(
-                label=tasks[taskIndex][4],
+                label=tasks[taskIndex].title,
                 value=taskIndex,
-                description=f"Start of week: {calendar.day_name[tasks[taskIndex][8]]}.",
+                description=f"Start of week: {calendar.day_name[tasks[taskIndex].startOfWeek]}.",
             )
             for taskIndex in range(len(tasks))
         ]
@@ -35,7 +34,7 @@ class ScheduleDropdown(discord.ui.Select):
 class ScheduleSelectView(discord.ui.View):
     def __init__(
         self,
-        tasks: tuple,
+        tasks: list[Task],
         dropdownCallback: Callable[[discord.ui.Select, Interaction], Awaitable[None]],
     ):
         super().__init__()
@@ -152,7 +151,7 @@ class ScheduleCommands(commands.Cog):
             class ManualInputHandler(discord.ui.Button):
                 # User Input Prompt
                 class ManualInputModal(discord.ui.Modal, title="Input timezone."):
-                    def __init__(self, dbConnector):
+                    def __init__(self, dbConnector: DBConnector):
                         self.dbConnector = dbConnector
                         super().__init__()
 
@@ -181,15 +180,15 @@ class ScheduleCommands(commands.Cog):
                                 embed=embed, view=TimezoneFilter(), ephemeral=True
                             )
                         else:
-                            rowId = self.dbConnector.addTask(
-                                interaction.guild_id,
-                                channelId,
-                                roleId,
-                                title,
-                                minHour,
-                                maxHour,
-                                self.tz.value,
-                                startOfWeek,
+                            task = self.dbConnector.createTask(
+                                guildId=interaction.guild_id,
+                                channelId=channelId,
+                                roleId=roleId,
+                                title=title,
+                                minHour=minHour,
+                                maxHour=maxHour,
+                                timezone=self.tz.value,
+                                startOfWeek=startOfWeek,
                             )
 
                             embed = discord.Embed(
@@ -197,7 +196,7 @@ class ScheduleCommands(commands.Cog):
                                 title="New schedule created!",
                                 description=f'A crab.fit titled "{title}" will be now posted every week!!',
                             ).set_footer(
-                                text="Task #" + str(rowId),
+                                text="Task #" + str(task.id),
                                 icon_url="https://crab.fit/logo192.png",
                             )
 
@@ -329,7 +328,7 @@ class ScheduleCommands(commands.Cog):
                                         interaction: discord.Interaction,
                                         select: discord.ui.Select,
                                     ):
-                                        rowId = self.dbConnector.addTask(
+                                        task = self.dbConnector.createTask(
                                             interaction.guild_id,
                                             channelId,
                                             roleId,
@@ -345,7 +344,7 @@ class ScheduleCommands(commands.Cog):
                                             title="New schedule created!",
                                             description=f'A crab.fit titled "{title}" will be now posted every week!!',
                                         ).set_footer(
-                                            text="Task #" + str(rowId),
+                                            text="Task #" + str(task.id),
                                             icon_url="https://crab.fit/logo192.png",
                                         )
 
@@ -440,27 +439,27 @@ class ScheduleCommands(commands.Cog):
 
         async def selectCallback(dropdown: discord.ui.Select, interaction: Interaction):
             task = guildTasks[int(dropdown.values[0])]
-            logging.debug("Creating on-demand crab.fit for Task #" + str(task[0]))
+            logging.debug("Creating on-demand crab.fit for " + str(task))
 
-            today = datetime.datetime.today().astimezone(timezone(task[7]))
+            today = datetime.datetime.now(timezone(task.timezone))
             initDate = today - datetime.timedelta(
-                days=((today.weekday()) - task[8]) % 7
+                days=((today.weekday()) - task.startOfWeek) % 7
             )
             logging.debug(
-                f"[Task #{task[0]}] Initial date for on-demand creation: {initDate}"
+                f"[Task #{task.id}] Initial date for on-demand creation: {initDate}"
             )
 
-            res = await TaskHandler.createCrabFit(
-                title=task[4],
-                minimumHour=task[5],
-                maximumHour=task[6],
-                localTz=task[7],
+            res = await lib.utils.createCrabFit(
+                title=task.title,
+                minimumHour=task.minHour,
+                maximumHour=task.maxHour,
+                localTz=task.timezone,
                 initDate=initDate,
             )
             if res.ok:
                 logging.info(
                     "Successfully created Crab.fit for Task #"
-                    + str(task[0])
+                    + str(task.id)
                     + " with response "
                     + str(res)
                 )
@@ -473,11 +472,8 @@ class ScheduleCommands(commands.Cog):
                     text="Enter your availability at the link above!",
                     icon_url="https://crab.fit/logo192.png",
                 )
-                rolePing = ""
-                if task[3]:
-                    rolePing = f"<@&{task[3]}>"
-                await self.bot.get_channel(task[2]).send(
-                    content=rolePing,
+                await self.bot.get_channel(task.channelId).send(
+                    content=f"<@&{task.roleId}>" if task.roleId else "",
                     embed=embed,
                 )
 
@@ -491,7 +487,7 @@ class ScheduleCommands(commands.Cog):
                 )
             else:
                 logging.error(
-                    f"On-demand crab.fit (#{str(task[0])}) failed! Response: ", res.text
+                    f"On-demand crab.fit (#{str(task.id)}) failed! Response: ", res.text
                 )
 
         embed = discord.Embed(
