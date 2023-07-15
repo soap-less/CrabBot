@@ -74,7 +74,7 @@ class Task:
         )
 
     def __str__(self) -> str:
-        return self.title + " (#" + self.id + ")"
+        return self.title + " (#" + str(self.id) + ")"
 
 
 class DBConnector:
