@@ -408,12 +408,13 @@ class ScheduleCommands(commands.Cog):
             await interaction.response.send_message(embed=embed, ephemeral=True)
             raise error
 
-    @app_commands.command(
-        name="this-week",
-        description="Creates the crab.fit for this week.",
-    )
-    @app_commands.checks.has_permissions(administrator=True)
-    async def thisWeek(self, interaction: Interaction):
+    async def sendOnDemandCrabFit(
+        self, interaction: discord.Interaction, deltaWeeks: int = 0
+    ):
+        """
+        Creates and sends an on-demand crab.fit a specific number of weeks in advance (specified by deltaWeeks)
+        """
+
         if not interaction.guild_id:
             await interaction.response.send_message(
                 ephemeral=True,
@@ -425,25 +426,14 @@ class ScheduleCommands(commands.Cog):
             )
             return
 
-        guildTasks = self.dbConnector.getTasksByGuildId(interaction.guild_id)
-        if len(guildTasks) < 1:
-            await interaction.response.send_message(
-                ephemeral=True,
-                embed=discord.Embed(
-                    color=0xFF4444,
-                    title="No crab.fits scheduled.",
-                    description="Make sure you've already created a weekly posting schedule before running this command. Run `/new-schedule` to create a new weekly posting schedule.",
-                ),
-            )
-            return
-
-        async def selectCallback(dropdown: discord.ui.Select, interaction: Interaction):
-            task = guildTasks[int(dropdown.values[0])]
+        async def createAndSendCrabFit(task: Task):
             logging.debug("Creating on-demand crab.fit for " + str(task))
 
             today = datetime.datetime.now(timezone(task.timezone))
-            initDate = today - datetime.timedelta(
-                days=((today.weekday()) - task.startOfWeek) % 7
+            initDate = (
+                today
+                + datetime.timedelta(weeks=deltaWeeks)
+                - datetime.timedelta(days=((today.weekday()) - task.startOfWeek) % 7)
             )
             logging.debug(
                 f"[Task #{task.id}] Initial date for on-demand creation: {initDate}"
@@ -490,15 +480,82 @@ class ScheduleCommands(commands.Cog):
                     f"On-demand crab.fit (#{str(task.id)}) failed! Response: ", res.text
                 )
 
-        embed = discord.Embed(
-            title="Which weekly schedule should I make a crab.fit for?", color=0xFFFF00
-        )
-        view = ScheduleSelectView(guildTasks, selectCallback)
+        guildTasks = self.dbConnector.getTasksByGuildId(interaction.guild_id)
+        if len(guildTasks) < 1:
+            await interaction.response.send_message(
+                ephemeral=True,
+                embed=discord.Embed(
+                    color=0xFF4444,
+                    title="No crab.fits scheduled.",
+                    description="Make sure you've already created a weekly posting schedule before running this command. Run `/new-schedule` to create a new weekly posting schedule.",
+                ),
+            )
+            return
+        elif len(guildTasks) == 1:
+            await createAndSendCrabFit(guildTasks[0])
+        else:  # Prompts User to Specify Which Schedule if Multiple
 
-        await interaction.response.send_message(ephemeral=True, embed=embed, view=view)
+            async def selectCallback(
+                dropdown: discord.ui.Select, interaction: Interaction
+            ):
+                task = guildTasks[int(dropdown.values[0])]
+                await createAndSendCrabFit(task)
+
+            embed = discord.Embed(
+                title="Which weekly schedule should I make a crab.fit for?",
+                color=0xFFFF00,
+            )
+            view = ScheduleSelectView(guildTasks, selectCallback)
+
+            await interaction.response.send_message(
+                ephemeral=True, embed=embed, view=view
+            )
+
+    @app_commands.command(
+        name="this-week",
+        description="Recreates the crab.fit for this week.",
+    )
+    @app_commands.checks.has_permissions(administrator=True)
+    async def thisWeek(self, interaction: Interaction):
+        await self.sendOnDemandCrabFit(interaction, 0)
 
     @thisWeek.error
     async def thisWeekError(
+        self,
+        interaction: discord.Interaction,
+        error: discord.app_commands.AppCommandError,
+    ):
+        if isinstance(error, discord.app_commands.errors.MissingPermissions):
+            embed = discord.Embed(
+                title="You can't do that!",
+                description="Only a server admin can run this command.",
+                color=0xFF4444,
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+        else:
+            errorStr = (
+                "```"
+                + (str(error)[:1015] + "..." if len(str(error)) >= 1018 else str(error))
+                + "```"
+            )
+            embed = discord.Embed(
+                title="Sorry, something went wrong!",
+                description="An error occurred.",
+                color=0xFF4444,
+            ).add_field(name=f"Error ({error.__class__})", value=errorStr)
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            raise error
+
+    @app_commands.command(
+        name="next-week",
+        description="Manually creates next week's crab.fit. Use when the crab.fit fails to create due to downtime.",
+    )
+    @app_commands.checks.has_permissions(administrator=True)
+    async def nextWeek(self, interaction: Interaction):
+        await self.sendOnDemandCrabFit(interaction, 1)
+
+    @nextWeek.error
+    async def nextWeekError(
         self,
         interaction: discord.Interaction,
         error: discord.app_commands.AppCommandError,
