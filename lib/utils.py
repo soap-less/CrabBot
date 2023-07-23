@@ -38,7 +38,7 @@ async def createCrabFit(
     # API Call for Crab.fit
     payload = json.dumps(
         {
-            "name": f"{title} {initDate.strftime('%m/%d')}-{(initDate + datetime.timedelta(weeks=1)).strftime('%m/%d')}",
+            "name": f"{title} {initDate.strftime('%m/%d')}-{(initDate + datetime.timedelta(days=6)).strftime('%m/%d')}",
             "times": createTimeArray(
                 initDate=initDate, minimumHour=minimumHour, maximumHour=maximumHour
             ),
