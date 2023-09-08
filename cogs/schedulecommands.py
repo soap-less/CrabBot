@@ -25,7 +25,7 @@ class ScheduleDropdown(discord.ui.Select):
         logging.debug("Creating schedule dropdown with options: " + str(options))
         self.cbFunction = callback
 
-        super().__init__(options=options, placeholder="Choose a schedule...")
+        super().__init__(options=options, placeholder="Select a schedule...")
 
     async def callback(self, interaction: Interaction):
         await self.cbFunction(self, interaction)
@@ -556,6 +556,88 @@ class ScheduleCommands(commands.Cog):
 
     @nextWeek.error
     async def nextWeekError(
+        self,
+        interaction: discord.Interaction,
+        error: discord.app_commands.AppCommandError,
+    ):
+        if isinstance(error, discord.app_commands.errors.MissingPermissions):
+            embed = discord.Embed(
+                title="You can't do that!",
+                description="Only a server admin can run this command.",
+                color=0xFF4444,
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+        else:
+            errorStr = (
+                "```"
+                + (str(error)[:1015] + "..." if len(str(error)) >= 1018 else str(error))
+                + "```"
+            )
+            embed = discord.Embed(
+                title="Sorry, something went wrong!",
+                description="An error occurred.",
+                color=0xFF4444,
+            ).add_field(name=f"Error ({error.__class__})", value=errorStr)
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            raise error
+
+    @app_commands.command(
+        name="delete-schedule",
+        description="Removes one of your weekly schedules.",
+    )
+    @app_commands.checks.has_permissions(administrator=True)
+    async def deleteSchedule(
+        self,
+        interaction: discord.Interaction,
+    ):
+        guildTasks = self.dbConnector.getTasksByGuildId(interaction.guild_id)
+
+        if len(guildTasks) < 1:
+            await interaction.response.send_message(
+                embed=discord.Embed(
+                    color=0xFF4444,
+                    title=f"Couldn't find any schedules!",
+                    description=f"There aren't any schedules to delete. Try making one first with /new-schedule.",
+                ),
+                ephemeral=True,
+            )
+
+        async def selectCallback(dropdown: discord.ui.Select, interaction: Interaction):
+            task = guildTasks[int(dropdown.values[0])]
+            try:
+                self.dbConnector.removeTaskById(task.id)
+                await interaction.response.send_message(
+                    embed=discord.Embed(
+                        color=0x444444,
+                        title=f"Removed task #{task.id}.",
+                        description=f'CrabBot will no longer post the schedule "{task.title if len(task.title) <= 4000 else task.title[:4000]}"!',
+                    ),
+                    ephemeral=True,
+                )
+            except:
+                await interaction.response.send_message(
+                    embed=discord.Embed(
+                        color=0xFF4444,
+                        title="Sorry, something went wrong when deleting a.",
+                        description="Please try again later. If this continues, please raise an issue on GitHub at the link below.",
+                    ).set_footer(
+                        "https://github.com/soap-less/crabbot/issues",
+                        icon_url="https://storage.googleapis.com/splat_soc_1/splatsoc/caaa2c0a-d800-4b5b-a141-1bf066c934df.png",
+                    ),
+                    ephemeral=True,
+                )
+
+        embed = discord.Embed(
+            title="Select a schedule to delete",
+            description="The selected schedule will be deleted PERMANENTLY.",
+            color=0xFF4444,
+        )
+        view = ScheduleSelectView(guildTasks, selectCallback)
+
+        await interaction.response.send_message(ephemeral=True, embed=embed, view=view)
+
+    @deleteSchedule.error
+    async def deleteScheduleError(
         self,
         interaction: discord.Interaction,
         error: discord.app_commands.AppCommandError,
