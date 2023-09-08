@@ -547,41 +547,6 @@ class ScheduleCommands(commands.Cog):
             raise error
 
     @app_commands.command(
-        name="next-week",
-        description="Manually creates next week's crab.fit. Use when the crab.fit fails to create due to downtime.",
-    )
-    @app_commands.checks.has_permissions(administrator=True)
-    async def nextWeek(self, interaction: Interaction):
-        await self.sendOnDemandCrabFit(interaction, 1)
-
-    @nextWeek.error
-    async def nextWeekError(
-        self,
-        interaction: discord.Interaction,
-        error: discord.app_commands.AppCommandError,
-    ):
-        if isinstance(error, discord.app_commands.errors.MissingPermissions):
-            embed = discord.Embed(
-                title="You can't do that!",
-                description="Only a server admin can run this command.",
-                color=0xFF4444,
-            )
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-        else:
-            errorStr = (
-                "```"
-                + (str(error)[:1015] + "..." if len(str(error)) >= 1018 else str(error))
-                + "```"
-            )
-            embed = discord.Embed(
-                title="Sorry, something went wrong!",
-                description="An error occurred.",
-                color=0xFF4444,
-            ).add_field(name=f"Error ({error.__class__})", value=errorStr)
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-            raise error
-
-    @app_commands.command(
         name="delete-schedule",
         description="Removes one of your weekly schedules.",
     )
