@@ -64,9 +64,9 @@ class ScheduleCommands(commands.Cog):
     )
     @app_commands.rename(
         channel="channel",
-        title="default-title",
-        minHour="time-range-start",
-        maxHour="time-range-end",
+        title="schedule-name",
+        minHour="daily-start-time",
+        maxHour="daily-end-time",
         startOfWeek="starting-weekday",
         roleToPing="role-to-ping",
     )
