@@ -173,3 +173,9 @@ class DBConnector:
         tasks = cursor.fetchall()
         cursor.close()
         return len(tasks) >= 4
+
+    def removeTaskById(self, taskId: int):
+        cursor = self.connection.cursor()
+        cursor.execute("DELETE FROM tasks WHERE id = " + str(taskId) + ";")
+        self.connection.commit()
+        cursor.close()
