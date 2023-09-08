@@ -47,58 +47,69 @@ class TaskHandler(commands.Cog):
 
         logging.info("Starting the following tasks: " + str(tasks))
         for task in tasks:
-            startDate = tomorrow.astimezone(timezone(task.timezone))
-            endDate = startDate + datetime.timedelta(days=6)
+            if task.guildId in [
+                guild.id for guild in self.bot.guilds
+            ]:  # Check if bot is in guild
+                startDate = tomorrow.astimezone(timezone(task.timezone))
+                endDate = startDate + datetime.timedelta(days=6)
 
-            res = await lib.utils.createCrabFit(
-                title=task.title,
-                minimumHour=task.minHour,
-                maximumHour=task.maxHour,
-                localTz=task.timezone,
-                initDate=startDate,
-            )
-            if res.ok:
-                logging.debug(
-                    "Successfully created Crab.fit for Task #"
-                    + str(task.id)
-                    + " with response "
-                    + str(res)
+                res = await lib.utils.createCrabFit(
+                    title=task.title,
+                    minimumHour=task.minHour,
+                    maximumHour=task.maxHour,
+                    localTz=task.timezone,
+                    initDate=startDate,
                 )
+                if res.ok:
+                    logging.debug(
+                        "Successfully created Crab.fit for Task #"
+                        + str(task.id)
+                        + " with response "
+                        + str(res)
+                    )
 
-                embed = discord.Embed(
-                    title=f"Schedule: {startDate.strftime('%m/%d')} - {endDate.strftime('%m/%d')}",
-                    url=f"https://crab.fit/{res.json()['id']}",
-                    color=0x00FFFF,
-                )
-                embed.set_footer(
-                    text="Enter your availability at the link above!",
-                    icon_url="https://crab.fit/logo192.png",
-                )
-                await self.bot.get_channel(task.channelId).send(
-                    content=f"<@&{task.roleId}>" if task.roleId else "",
-                    embed=embed,
-                )
+                    embed = discord.Embed(
+                        title=f"Schedule: {startDate.strftime('%m/%d')} - {endDate.strftime('%m/%d')}",
+                        url=f"https://crab.fit/{res.json()['id']}",
+                        color=0x00FFFF,
+                    )
+                    embed.set_footer(
+                        text="Enter your availability at the link above!",
+                        icon_url="https://crab.fit/logo192.png",
+                    )
+                    await self.bot.get_channel(task.channelId).send(
+                        content=f"<@&{task.roleId}>" if task.roleId else "",
+                        embed=embed,
+                    )
+
+                else:
+                    logging.error(
+                        "Crab.fit API call failed! Here is the response "
+                        + str(res)
+                        + ": \n"
+                        + res.text
+                    )
+
+                    embed = discord.Embed(
+                        title="Something went wrong making the crab.fit.",
+                        description="Crab.fit servers are most likely down.",
+                        color=0xFF4444,
+                    )
+
+                    resText = res.text
+                    if len(resText) > 1000:
+                        resText = resText[:1000] + "..."
+
+                    embed.add_field(name="Full Error:", value="```" + resText + "```")
+                    await self.bot.get_channel(task.channelId).send(embed=embed)
 
             else:
-                logging.error(
-                    "Crab.fit API call failed! Here is the response "
-                    + str(res)
-                    + ": \n"
-                    + res.text
-                )
-
-                embed = discord.Embed(
-                    title="Something went wrong making the crab.fit.",
-                    description="Crab.fit servers are most likely down.",
-                    color=0xFF4444,
-                )
-
-                resText = res.text
-                if len(resText) > 1000:
-                    resText = resText[:1000] + "..."
-
-                embed.add_field(name="Full Error:", value="```" + resText + "```")
-                await self.bot.get_channel(task.channelId).send(embed=embed)
+                try:
+                    self.dbConnector.removeTasksByGuildId(
+                        task.guildId
+                    )  # Removes all tasks from guild if guild is not found
+                except:
+                    continue
 
         logging.info("Finished tasks:" + str(tasks))
 
