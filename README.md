@@ -7,7 +7,7 @@ A Discord bot to create a weekly [Crab.Fit](https://crab.fit) schedule.
 - Select your current time.
 - Select the most appropriate timezone.
 - Done! CrabBot will send out a new schedule every week.
-- If you'd like to generate a schedule for this week, run /this-week.
+- If you'd like to generate a schedule for the current week, run /this-week.
 
 ## Commands
 
