@@ -39,6 +39,34 @@ class TaskHandler(commands.Cog):
             tasks += self.dbConnector.getTasks(midnightTzByWeekday[key], key)
         return tasks
 
+    # Replaces the Last Pinned Schedule Message with the New One
+    async def replacePinnedSchedule(self, msgToPin: discord.Message):
+        try:
+            pins = await msgToPin.channel.pins()
+
+            pinnedSched = None  # Find last pinned schedule
+            for pin in pins:
+                if pin.author == msgToPin.guild.me:
+                    pinnedSched = pin
+                    break
+
+            if pinnedSched:
+                await pinnedSched.unpin()  # Unpin last Schedule
+
+            await msgToPin.pin(reason="New weekly schedule.")  # Pin new schedule
+
+            if (  # Delete pin notification message.
+                msgToPin.channel.last_message
+                and msgToPin.channel.last_message.type is discord.MessageType.pins_add
+            ):
+                await msgToPin.channel.last_message.delete()
+
+            logging.info(f"Pinned message ID #{msgToPin.id}.")
+
+        except discord.Forbidden:
+            logging.debug("No pin permissions. Skipping...")
+            pass
+
     @tasks.loop(hours=1)
     async def executeScheduledTasks(self):
         today = datetime.datetime.today()
@@ -72,15 +100,17 @@ class TaskHandler(commands.Cog):
                         title=f"Schedule: {startDate.strftime('%m/%d')} - {endDate.strftime('%m/%d')}",
                         url=f"https://crab.fit/{res.json()['id']}",
                         color=0x00FFFF,
-                    )
-                    embed.set_footer(
+                    ).set_footer(
                         text="Enter your availability at the link above!",
                         icon_url="https://crab.fit/logo192.png",
                     )
-                    await self.bot.get_channel(task.channelId).send(
-                        content=f"<@&{task.roleId}>" if task.roleId else "",
-                        embed=embed,
-                    )
+
+                    await self.replacePinnedSchedule(
+                        await self.bot.get_channel(task.channelId).send(
+                            content=f"<@&{task.roleId}>" if task.roleId else "",
+                            embed=embed,
+                        )
+                    )  # Post New Schedule and Pin if Possible
 
                 else:
                     logging.error(
