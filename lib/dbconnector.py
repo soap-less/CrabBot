@@ -172,7 +172,7 @@ class DBConnector:
         cursor.execute("SELECT * FROM tasks WHERE guild_id = " + str(guildId) + ";")
         tasks = cursor.fetchall()
         cursor.close()
-        return len(tasks) >= 4
+        return len(tasks) >= 5
 
     # TO-DO: Tests
     def removeTaskById(self, taskId: int):
